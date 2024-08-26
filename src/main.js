@@ -64,6 +64,7 @@ async function onFormSubmit(e) {
       form.reset();
       form.elements.search.focus();
       loaderBox.classList.remove('loader-box-active');
+      loadBtn.classList.remove('loader-box-active');
       return;
     }
 
