@@ -10,6 +10,8 @@ export const gethPhotos = (searchValue, page) => {
       page: page,
       per_page: 15,
       key: '39461522-3585b4ffe1c253549e3ec0e9b',
+      image_type: 'photo',
+      safesearch: true,
     },
   };
 
