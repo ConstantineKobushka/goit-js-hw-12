@@ -79,6 +79,7 @@ async function onFormSubmit(e) {
     form.elements.search.focus();
     loaderBox.classList.remove('loader-box-active');
     loadBtn.classList.add('loader-box-active');
+    quantityElements += response.data.hits.length;
   } catch (error) {
     console.log(err);
   }
@@ -108,7 +109,7 @@ async function onLoadBtnClick() {
 
     quantityElements += response.data.hits.length;
 
-    if (quantityElements === response.data.totalHits) {
+    if (quantityElements >= response.data.totalHits) {
       iziToast.show({
         message: "We're sorry, but you've reached the end of search results.",
         position: 'topRight',
