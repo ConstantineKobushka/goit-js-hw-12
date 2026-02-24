@@ -1,133 +1,129 @@
 import iziToast from 'izitoast';
 
-import { gethPhotos } from './js/pixabay-api';
-import { createGalleryElement } from './js/render-functions';
-import SimpleLightbox from 'simplelightbox';
+import {
+  createGallery,
+  clearGallery,
+  showLoader,
+  hideLoader,
+  showLoadMoreButton,
+  hideLoadMoreButton,
+} from './js/render-functions';
+import { getImagesByQuery } from './js/pixabay-api';
 
-import errorMessage from './img/error-massage.svg';
+import iziToastErrorIcon from './img/izitoast-error-icon.svg';
 
-const form = document.querySelector('.form');
-const gallery = document.querySelector('.gallery-list');
-const loadBtn = document.querySelector('.loader-btn');
-const loaderBox = document.querySelector('.loader-box');
+const galleryFormEl = document.querySelector('.gallery-form');
+const galleryEl = document.querySelector('.gallery-list');
+const galleryLoaderEl = document.querySelector('.gallery-loader');
+const loadMoreBtn = document.querySelector('.load-more-btn');
 
-let searchInputValue = '';
+let searchValue = '';
 let currentPage = 1;
-let cardHeight = 0;
-let quantityElements = 0;
+let amountImages = 0;
+let rectHeight = 0;
+// const PER_PAGE = 26;
 
-form.addEventListener('submit', onFormSubmit);
-loadBtn.addEventListener('click', onLoadBtnClick);
+galleryFormEl.addEventListener('submit', onGalleryFormSubmit);
+loadMoreBtn.addEventListener('click', onLoadMoreBtnClick);
 
-const simpleLightbox = new SimpleLightbox('.gallery-list a', {
-  captionDelay: 250,
-  captionPosition: 'bottom',
-  captionsData: 'alt',
-  overlayOpacity: 1,
-});
+async function onGalleryFormSubmit(event) {
+  event.preventDefault();
+  currentPage = 1;
+  amountImages = 0;
+  searchValue = event.target.elements.search.value.trim();
 
-async function onFormSubmit(e) {
+  if (searchValue === '') {
+    showErrorToast(
+      'The input field cannot be empty. Please enter a search keyword.'
+    );
+    return;
+  }
+
+  clearGallery(galleryEl);
+  hideLoadMoreButton(loadMoreBtn);
+  showLoader(galleryLoaderEl);
+
   try {
-    e.preventDefault();
+    const { data } = await getImagesByQuery(searchValue, currentPage);
 
-    currentPage = 1;
-
-    searchInputValue = form.elements.search.value.trim();
-
-    if (searchInputValue.trim() === '') {
+    if (data.hits.length === 0) {
+      showErrorToast(
+        'Sorry, there are no images matching your search query. Please, try again!'
+      );
       return;
     }
 
-    gallery.innerHTML = '';
+    amountImages += data.hits.length;
 
-    loaderBox.classList.add('loader-box-active');
+    createGallery(data.hits, galleryEl);
+    rectHeight = galleryEl.firstElementChild.getBoundingClientRect().height;
 
-    const response = await gethPhotos(searchInputValue, currentPage);
+    // if (data.hits.length === PER_PAGE) {
+    //   showLoadMoreButton(loadMoreBtn);
+    // }
 
-    if (response.data.hits.length === 0) {
-      iziToast.show({
-        message:
-          'Sorry, there are no images matching your search query. Please, try again!',
-        position: 'topRight',
-        backgroundColor: '#ef4040',
-        titleColor: '#fff',
-        titleSize: '16px',
-        titleLineHeight: '24px',
-        messageColor: '#fff',
-        messageSize: '16px',
-        messageLineHeight: '24px',
-        iconUrl: errorMessage,
-        maxWidth: '385px',
-        timeout: 5000,
-      });
-
-      form.reset();
-      form.elements.search.focus();
-      loaderBox.classList.remove('loader-box-active');
-      loadBtn.classList.remove('loader-box-active');
-      return;
+    if (amountImages < data.totalHits) {
+      showLoadMoreButton(loadMoreBtn);
     }
-
-    const galleryCardsTemplate = response.data.hits
-      .map(imgInfo => createGalleryElement(imgInfo))
-      .join('');
-
-    gallery.innerHTML = galleryCardsTemplate;
-    cardHeight = gallery.firstElementChild.getBoundingClientRect().height;
-    simpleLightbox.refresh();
-    form.reset();
-    form.elements.search.focus();
-    loaderBox.classList.remove('loader-box-active');
-    loadBtn.classList.add('loader-box-active');
-    quantityElements += response.data.hits.length;
   } catch (error) {
-    console.log(err);
+    showErrorToast(error.message);
+  } finally {
+    hideLoader(galleryLoaderEl);
+    galleryFormEl.reset();
+    galleryFormEl.elements.search.focus();
   }
 }
 
-async function onLoadBtnClick() {
+async function onLoadMoreBtnClick() {
   try {
+    hideLoadMoreButton(loadMoreBtn);
+    showLoader(galleryLoaderEl);
+
     currentPage++;
+    const { data } = await getImagesByQuery(searchValue, currentPage);
 
-    loaderBox.classList.add('loader-box-active');
-
-    const response = await gethPhotos(searchInputValue, currentPage);
-
-    const galleryCardsTemplate = response.data.hits
-      .map(imgInfo => createGalleryElement(imgInfo))
-      .join('');
-
-    gallery.insertAdjacentHTML('beforeend', galleryCardsTemplate);
-    simpleLightbox.refresh();
-
-    loaderBox.classList.remove('loader-box-active');
+    createGallery(data.hits, galleryEl);
 
     scrollBy({
-      top: cardHeight * 2,
+      top: rectHeight * 2,
       behavior: 'smooth',
     });
 
-    quantityElements += response.data.hits.length;
+    amountImages += data.hits.length;
 
-    if (quantityElements >= response.data.totalHits) {
-      iziToast.show({
-        message: "We're sorry, but you've reached the end of search results.",
-        position: 'topRight',
-        backgroundColor: '#ef4040',
-        titleColor: '#fff',
-        titleSize: '16px',
-        titleLineHeight: '24px',
-        messageColor: '#fff',
-        messageSize: '16px',
-        messageLineHeight: '24px',
-        iconUrl: errorMessage,
-        maxWidth: '385px',
-        timeout: 5000,
-      });
-      loaderBox.classList.remove('loader-box-active');
-      loadBtn.classList.remove('loader-box-active');
+    // if (data.hits.length === PER_PAGE) {
+    //   showLoadMoreButton(loadMoreBtn);
+    // }
+
+    if (amountImages < data.totalHits) {
+      showLoadMoreButton(loadMoreBtn);
+    }
+
+    if (amountImages === data.totalHits) {
+      showErrorToast(
+        "We're sorry, but you've reached the end of search results."
+      );
     }
   } catch (error) {
-    console.log(error);
+    showErrorToast(error.message);
+    hideLoadMoreButton(loadMoreBtn);
+  } finally {
+    hideLoader(galleryLoaderEl);
   }
+}
+
+export function showErrorToast(message) {
+  iziToast.error({
+    title: 'Error',
+    titleColor: '#ffffff',
+    message,
+    messageColor: '#ffffff',
+    maxWidth: '385px',
+    iconUrl: iziToastErrorIcon,
+    position: 'topRight',
+    closeOnEscape: true,
+    backgroundColor: '#ef4040',
+    progressBarColor: '#b51b1b',
+    timeout: 3000,
+  });
 }

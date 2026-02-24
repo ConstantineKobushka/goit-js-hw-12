@@ -1,19 +1,38 @@
 import axios from 'axios';
 
-axios.defaults.baseURL = 'https://pixabay.com/api/';
+const pixabayInstance = axios.create({
+  baseURL: 'https://pixabay.com/api',
+  params: {
+    key: '39461522-3585b4ffe1c253549e3ec0e9b',
+    image_type: 'photo',
+    orientation: 'horizontal',
+    safesearch: true,
+    per_page: 15,
+  },
+});
 
-export const gethPhotos = (searchValue, page) => {
-  const axiosOptions = {
-    params: {
-      q: searchValue,
-      orientation: 'portrait',
-      page: page,
-      per_page: 15,
-      key: '39461522-3585b4ffe1c253549e3ec0e9b',
-      image_type: 'photo',
-      safesearch: true,
-    },
-  };
-
-  return axios.get('', axiosOptions);
+export const getImagesByQuery = async (query, page) => {
+  const data = await pixabayInstance.get('/', { params: { q: query, page } });
+  return data;
 };
+
+// ! Method with fetch and URLSearchParams
+// const BASE_URL = 'https://pixabay.com/api/';
+
+// export const getImagesByQuery = query => {
+//   const options = new URLSearchParams({
+//     key: '39461522-3585b4ffe1c253549e3ec0e9b',
+//     q: query,
+//     image_type: 'photo',
+//     orientation: 'horizontal',
+//     safesearch: true,
+//   });
+
+//   return fetch(`${BASE_URL}?${options}`).then(response => {
+//     if (!response.ok) {
+//       throw new Error(response.status);
+//     }
+
+//     return response.json();
+//   });
+// };
